@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import BottomSheet from '@/components/shared/BottomSheet';
-import { getTasks, updateTask, deleteTask } from '@/lib/db';
+import { db, updateTask, deleteTask } from '@/lib/db';
 import type { Task } from '@/lib/types';
 
 const HOUSEHOLD_ID = 'household-1';
@@ -12,22 +12,18 @@ interface ManageTasksSheetProps {
 }
 
 export default function ManageTasksSheet({ open, onClose }: ManageTasksSheetProps) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  useEffect(() => {
-    if (open) {
-      getTasks(HOUSEHOLD_ID).then(setTasks);
-    }
-  }, [open]);
+  const tasks = useLiveQuery(
+    () => db.tasks.where('householdId').equals(HOUSEHOLD_ID).toArray(),
+    [],
+    [] as Task[],
+  );
 
   const handleToggle = async (task: Task) => {
     await updateTask(task.id, { isActive: !task.isActive });
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, isActive: !t.isActive } : t)));
   };
 
   const handleDelete = async (id: string) => {
     await deleteTask(id);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   return (

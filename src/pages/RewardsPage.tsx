@@ -1,30 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useLiveQuery } from 'dexie-react-hooks';
 import RewardCard from '@/components/rewards/RewardCard';
 import RedeemSheet from '@/components/rewards/RedeemSheet';
 import AddRewardSheet from '@/components/rewards/AddRewardSheet';
 import { useKids } from '@/hooks/useKids';
-import { getActiveRewards, createReward, createRedemption } from '@/lib/db';
+import { db, createReward, createRedemption } from '@/lib/db';
 import type { Reward } from '@/lib/types';
 
 const HOUSEHOLD_ID = 'household-1';
 
 export default function RewardsPage() {
   const { selectedKid, balance, refreshBalance } = useKids();
-  const [rewards, setRewards] = useState<Reward[]>([]);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [showRedeem, setShowRedeem] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
-  const loadRewards = useCallback(async () => {
-    const loaded = await getActiveRewards(HOUSEHOLD_ID);
-    setRewards(loaded);
-  }, []);
-
-  useEffect(() => {
-    loadRewards();
-  }, [loadRewards]);
+  const rewards = useLiveQuery(
+    () => db.rewards.where('householdId').equals(HOUSEHOLD_ID).filter((r) => r.isActive).toArray(),
+    [],
+    [] as Reward[],
+  );
 
   const handleRedeem = async () => {
     if (!selectedReward || !selectedKid) return;
@@ -49,7 +46,6 @@ export default function RewardsPage() {
       isActive: true,
       createdAt: Date.now(),
     });
-    await loadRewards();
   };
 
   return (

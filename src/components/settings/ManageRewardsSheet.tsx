@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import BottomSheet from '@/components/shared/BottomSheet';
-import { getRewards, updateReward, deleteReward } from '@/lib/db';
+import { db, updateReward, deleteReward } from '@/lib/db';
 import type { Reward } from '@/lib/types';
 
 const HOUSEHOLD_ID = 'household-1';
@@ -12,22 +12,18 @@ interface ManageRewardsSheetProps {
 }
 
 export default function ManageRewardsSheet({ open, onClose }: ManageRewardsSheetProps) {
-  const [rewards, setRewards] = useState<Reward[]>([]);
-
-  useEffect(() => {
-    if (open) {
-      getRewards(HOUSEHOLD_ID).then(setRewards);
-    }
-  }, [open]);
+  const rewards = useLiveQuery(
+    () => db.rewards.where('householdId').equals(HOUSEHOLD_ID).toArray(),
+    [],
+    [] as Reward[],
+  );
 
   const handleToggle = async (reward: Reward) => {
     await updateReward(reward.id, { isActive: !reward.isActive });
-    setRewards((prev) => prev.map((r) => (r.id === reward.id ? { ...r, isActive: !r.isActive } : r)));
   };
 
   const handleDelete = async (id: string) => {
     await deleteReward(id);
-    setRewards((prev) => prev.filter((r) => r.id !== id));
   };
 
   return (

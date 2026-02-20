@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { getKids, getKidBalance } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, getKidBalance } from '@/lib/db';
 import type { Kid } from '@/lib/types';
+
+const SELECTED_KID_KEY = 'selectedKidId';
 
 interface KidContextValue {
   kids: Kid[];
@@ -14,29 +17,45 @@ interface KidContextValue {
 const KidContext = createContext<KidContextValue | null>(null);
 
 export function KidProvider({ householdId, children }: { householdId: string; children: ReactNode }) {
-  const [kids, setKids] = useState<Kid[]>([]);
-  const [selectedKidId, setSelectedKidId] = useState<string | null>(null);
+  const [selectedKidId, setSelectedKidId] = useState<string | null>(() => {
+    return localStorage.getItem(SELECTED_KID_KEY);
+  });
   const [balance, setBalance] = useState(0);
+
+  // Live query: kids list auto-updates when DB changes
+  const kids = useLiveQuery(
+    () => db.kids.where('householdId').equals(householdId).sortBy('order'),
+    [householdId],
+    [] as Kid[],
+  );
 
   const selectedKid = kids.find((k) => k.id === selectedKidId) ?? null;
 
-  const refreshKids = useCallback(async () => {
-    const loaded = await getKids(householdId);
-    setKids(loaded);
-    // If selected kid was deleted, pick the first one
-    if (loaded.length > 0 && !loaded.find((k) => k.id === selectedKidId)) {
-      setSelectedKidId(loaded[0].id);
-    }
-    // If no kid selected yet, pick first
-    if (loaded.length > 0 && !selectedKidId) {
-      setSelectedKidId(loaded[0].id);
-    }
-  }, [householdId, selectedKidId]);
-
+  // Auto-select first kid if none selected or selected kid was deleted
   useEffect(() => {
-    refreshKids();
-  }, [refreshKids]);
+    if (kids.length > 0 && !kids.find((k) => k.id === selectedKidId)) {
+      const firstId = kids[0].id;
+      setSelectedKidId(firstId);
+      localStorage.setItem(SELECTED_KID_KEY, firstId);
+    }
+  }, [kids, selectedKidId]);
 
+  // Live query: recompute balance whenever completions or redemptions change for selected kid
+  const liveBalance = useLiveQuery(
+    async () => {
+      if (!selectedKidId) return 0;
+      return getKidBalance(selectedKidId);
+    },
+    [selectedKidId],
+    0,
+  );
+
+  // Keep local balance in sync with live query
+  useEffect(() => {
+    setBalance(liveBalance);
+  }, [liveBalance]);
+
+  // refreshBalance still works for imperative callers (backward compat)
   const refreshBalance = useCallback(async () => {
     if (selectedKidId) {
       const b = await getKidBalance(selectedKidId);
@@ -44,12 +63,14 @@ export function KidProvider({ householdId, children }: { householdId: string; ch
     }
   }, [selectedKidId]);
 
-  useEffect(() => {
-    refreshBalance();
-  }, [refreshBalance]);
+  // refreshKids is now a no-op since useLiveQuery handles it, but kept for backward compat
+  const refreshKids = useCallback(async () => {
+    // useLiveQuery auto-updates kids — this is a no-op for backward compat
+  }, []);
 
   const selectKid = useCallback((id: string) => {
     setSelectedKidId(id);
+    localStorage.setItem(SELECTED_KID_KEY, id);
   }, []);
 
   return (

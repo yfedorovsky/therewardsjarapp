@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { getRecentActivity, getTotalActivityCount, type ActivityItem } from '@/lib/db';
 import { timeAgo } from '@/lib/timeAgo';
 
@@ -10,38 +11,26 @@ interface ActivityFeedProps {
 }
 
 export default function ActivityFeed({ kidId }: ActivityFeedProps) {
-  const [items, setItems] = useState<ActivityItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const load = useCallback(async (offset: number = 0) => {
-    setLoading(true);
-    const [fetched, count] = await Promise.all([
-      getRecentActivity(PAGE_SIZE + offset, 0),
-      getTotalActivityCount(),
-    ]);
+  // Live query re-runs whenever taskCompletions or redemptions tables change
+  const result = useLiveQuery(
+    async () => {
+      const [fetched, count] = await Promise.all([
+        getRecentActivity(limit, 0),
+        getTotalActivityCount(),
+      ]);
+      const filtered = kidId ? fetched.filter((item) => item.kidId === kidId) : fetched;
+      return { items: filtered, total: kidId ? filtered.length : count };
+    },
+    [kidId, limit],
+    { items: [] as ActivityItem[], total: 0 },
+  );
 
-    // Filter by kid if specified
-    const filtered = kidId ? fetched.filter((item) => item.kidId === kidId) : fetched;
-
-    if (offset === 0) {
-      setItems(filtered.slice(0, PAGE_SIZE));
-      setTotal(kidId ? filtered.length : count);
-    } else {
-      setItems(filtered.slice(0, offset + PAGE_SIZE));
-      setTotal(kidId ? filtered.length : count);
-    }
-    setLoading(false);
-  }, [kidId]);
-
-  // Reload when kid changes
-  useEffect(() => {
-    load(0);
-  }, [load]);
-
+  const { items, total } = result;
   const hasMore = items.length < total;
 
-  if (items.length === 0 && !loading) {
+  if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-10">
         <span className="text-3xl">{'\u{1F4AD}'}</span>
@@ -83,11 +72,10 @@ export default function ActivityFeed({ kidId }: ActivityFeedProps) {
 
       {hasMore && (
         <button
-          onClick={() => load(items.length)}
-          disabled={loading}
+          onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
           className="mt-2 self-center rounded-full border border-border px-5 py-2 text-xs font-semibold text-text-muted transition-colors active:bg-bg"
         >
-          {loading ? 'Loading...' : 'Load more'}
+          Load more
         </button>
       )}
     </div>

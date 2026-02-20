@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { getKidBalance } from '@/lib/db';
 import type { Kid } from '@/lib/types';
 
@@ -9,11 +9,7 @@ interface KidOverviewCardProps {
 }
 
 export default function KidOverviewCard({ kid, isSelected, onTap }: KidOverviewCardProps) {
-  const [balance, setBalance] = useState(0);
-
-  useEffect(() => {
-    getKidBalance(kid.id).then(setBalance);
-  }, [kid.id]);
+  const balance = useLiveQuery(() => getKidBalance(kid.id), [kid.id], 0);
 
   return (
     <button

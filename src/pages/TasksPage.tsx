@@ -1,32 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useLiveQuery } from 'dexie-react-hooks';
 import FilterChips, { type FilterValue } from '@/components/tasks/FilterChips';
 import TaskCard from '@/components/tasks/TaskCard';
 import CompleteTaskSheet from '@/components/tasks/CompleteTaskSheet';
 import AddTaskSheet from '@/components/tasks/AddTaskSheet';
 import { useKids } from '@/hooks/useKids';
-import { getActiveTasks, createTask, createCompletion } from '@/lib/db';
+import { db, createTask, createCompletion } from '@/lib/db';
 import type { Task } from '@/lib/types';
 
 const HOUSEHOLD_ID = 'household-1';
 
 export default function TasksPage() {
   const { kids, selectedKid, refreshBalance } = useKids();
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<FilterValue>('all');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showComplete, setShowComplete] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
-  const loadTasks = useCallback(async () => {
-    const loaded = await getActiveTasks(HOUSEHOLD_ID);
-    setTasks(loaded);
-  }, []);
-
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+  const tasks = useLiveQuery(
+    () => db.tasks.where('householdId').equals(HOUSEHOLD_ID).filter((t) => t.isActive).toArray(),
+    [],
+    [] as Task[],
+  );
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
@@ -83,7 +80,6 @@ export default function TasksPage() {
       isActive: true,
       createdAt: Date.now(),
     });
-    await loadTasks();
   };
 
   return (
