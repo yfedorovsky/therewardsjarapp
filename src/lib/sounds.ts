@@ -3,10 +3,10 @@
  * All sounds are generated programmatically — no external audio files.
  * Gracefully degrades to no-op on unsupported devices.
  *
- * iOS Safari keeps AudioContext in "suspended" state until resume() is
- * awaited inside a user-gesture callback. We unlock the context on the
- * very first touchstart/click AND await resume inside every play call
- * so sounds work reliably on all mobile browsers.
+ * IMPORTANT: The AudioContext must only be created inside a user-gesture
+ * callback (click / touchstart / etc.). Creating it at module-load time
+ * produces a context whose destination has 0 output channels on some
+ * browsers, causing all sounds to be silently discarded.
  */
 
 const SOUND_KEY = 'soundEnabled';
@@ -14,8 +14,8 @@ const SOUND_KEY = 'soundEnabled';
 let ctx: AudioContext | null = null;
 let unlocked = false;
 
-/** Create the AudioContext (lazy, one-time) */
-function createCtx(): AudioContext | null {
+/** Create or return the shared AudioContext. MUST be called from a user gesture. */
+function getOrCreateCtx(): AudioContext | null {
   try {
     if (!ctx || ctx.state === 'closed') {
       ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -26,9 +26,9 @@ function createCtx(): AudioContext | null {
   }
 }
 
-/** Ensure the AudioContext is running (must be called from user gesture) */
+/** Ensure the AudioContext exists and is running. */
 async function ensureRunning(): Promise<AudioContext | null> {
-  const ac = createCtx();
+  const ac = getOrCreateCtx();
   if (!ac) return null;
   if (ac.state === 'suspended') {
     await ac.resume();
@@ -38,16 +38,16 @@ async function ensureRunning(): Promise<AudioContext | null> {
 
 /**
  * One-time unlock for iOS Safari.
- * Plays a silent buffer on the first touch to move the context to "running".
+ * On the first user gesture, creates the AudioContext and plays a silent
+ * buffer to move it to "running" state.
  */
-function unlockAudio(): void {
-  if (unlocked) return;
-  const ac = createCtx();
-  if (!ac) return;
-
+function initUnlockListeners(): void {
   const unlock = async () => {
     if (unlocked) return;
     unlocked = true;
+
+    const ac = getOrCreateCtx();
+    if (!ac) return;
 
     if (ac.state === 'suspended') {
       await ac.resume();
@@ -69,8 +69,8 @@ function unlockAudio(): void {
   document.addEventListener('click', unlock, true);
 }
 
-// Kick off the unlock listener as soon as this module loads
-unlockAudio();
+// Register the unlock listeners (does NOT create the AudioContext yet)
+initUnlockListeners();
 
 export function isSoundEnabled(): boolean {
   return localStorage.getItem(SOUND_KEY) !== 'false';
