@@ -3,74 +3,37 @@
  * All sounds are generated programmatically — no external audio files.
  * Gracefully degrades to no-op on unsupported devices.
  *
- * IMPORTANT: The AudioContext must only be created inside a user-gesture
- * callback (click / touchstart / etc.). Creating it at module-load time
- * produces a context whose destination has 0 output channels on some
- * browsers, causing all sounds to be silently discarded.
+ * CRITICAL: All sound functions must be fully synchronous. Using async/await
+ * causes the AudioContext to be created in a microtask, outside the browser's
+ * user-gesture window. This produces a context with 0 destination outputs
+ * on Edge/Safari, silently discarding all audio.
  */
 
 const SOUND_KEY = 'soundEnabled';
 
 let ctx: AudioContext | null = null;
-let unlocked = false;
 
-/** Create or return the shared AudioContext. MUST be called from a user gesture. */
-function getOrCreateCtx(): AudioContext | null {
+/**
+ * Get or create the shared AudioContext.
+ * MUST be called synchronously from a user-gesture callback.
+ */
+function getCtx(): AudioContext | null {
   try {
     if (!ctx || ctx.state === 'closed') {
       ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    // Kick off resume if suspended (for iOS Safari). Fire-and-forget is fine —
+    // the context accepts scheduled nodes immediately, they just won't play
+    // until resume() settles. On the very first gesture this means the first
+    // sound may be clipped, but subsequent ones work perfectly.
+    if (ctx.state === 'suspended') {
+      ctx.resume();
     }
     return ctx;
   } catch {
     return null;
   }
 }
-
-/** Ensure the AudioContext exists and is running. */
-async function ensureRunning(): Promise<AudioContext | null> {
-  const ac = getOrCreateCtx();
-  if (!ac) return null;
-  if (ac.state === 'suspended') {
-    await ac.resume();
-  }
-  return ac;
-}
-
-/**
- * One-time unlock for iOS Safari.
- * On the first user gesture, creates the AudioContext and plays a silent
- * buffer to move it to "running" state.
- */
-function initUnlockListeners(): void {
-  const unlock = async () => {
-    if (unlocked) return;
-    unlocked = true;
-
-    const ac = getOrCreateCtx();
-    if (!ac) return;
-
-    if (ac.state === 'suspended') {
-      await ac.resume();
-    }
-    // Play a silent buffer to fully unlock on iOS
-    const buf = ac.createBuffer(1, 1, ac.sampleRate);
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    src.connect(ac.destination);
-    src.start(0);
-
-    document.removeEventListener('touchstart', unlock, true);
-    document.removeEventListener('touchend', unlock, true);
-    document.removeEventListener('click', unlock, true);
-  };
-
-  document.addEventListener('touchstart', unlock, true);
-  document.addEventListener('touchend', unlock, true);
-  document.addEventListener('click', unlock, true);
-}
-
-// Register the unlock listeners (does NOT create the AudioContext yet)
-initUnlockListeners();
 
 export function isSoundEnabled(): boolean {
   return localStorage.getItem(SOUND_KEY) !== 'false';
@@ -80,16 +43,17 @@ export function setSoundEnabled(enabled: boolean): void {
   localStorage.setItem(SOUND_KEY, String(enabled));
 }
 
-/** Play a tone using an oscillator node */
-async function playTone(
+/** Play a tone using an oscillator node. Fully synchronous. */
+function playTone(
   freq: number,
   duration: number,
   type: OscillatorType = 'sine',
   volume: number = 0.15,
   delay: number = 0,
-): Promise<void> {
-  const ac = await ensureRunning();
-  if (!ac || !isSoundEnabled()) return;
+): void {
+  if (!isSoundEnabled()) return;
+  const ac = getCtx();
+  if (!ac) return;
 
   const osc = ac.createOscillator();
   const gain = ac.createGain();
@@ -115,9 +79,10 @@ export function playCoinDrop(): void {
 }
 
 /** Subtle "whoosh" during coin flight — filtered noise */
-export async function playCoinArc(): Promise<void> {
-  const ac = await ensureRunning();
-  if (!ac || !isSoundEnabled()) return;
+export function playCoinArc(): void {
+  if (!isSoundEnabled()) return;
+  const ac = getCtx();
+  if (!ac) return;
 
   const bufferSize = ac.sampleRate * 0.2;
   const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
@@ -161,9 +126,9 @@ export function playKidSwitch(): void {
 }
 
 /** Gentle low tone — insufficient points / validation error */
-export async function playError(): Promise<void> {
+export function playError(): void {
   if (!isSoundEnabled()) return;
-  const ac = await ensureRunning();
+  const ac = getCtx();
   if (!ac) return;
 
   const osc = ac.createOscillator();
