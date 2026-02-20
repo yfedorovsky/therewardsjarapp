@@ -4,6 +4,7 @@ import Shell from '@/components/layout/Shell';
 import BottomNav from '@/components/layout/BottomNav';
 import { seedDatabase } from '@/lib/seed';
 import { KidProvider } from '@/hooks/useKids';
+import { ToastProvider } from '@/components/shared/Toast';
 import type { TabId } from '@/lib/constants';
 
 const JarPage = lazy(() => import('@/pages/JarPage'));
@@ -18,6 +19,15 @@ const PAGES: Record<TabId, React.LazyExoticComponent<React.FC>> = {
   tasks: TasksPage,
   rewards: RewardsPage,
   settings: SettingsPage,
+};
+
+/** Background gradient per tab */
+const TAB_BACKGROUNDS: Record<TabId, string> = {
+  jar: 'linear-gradient(180deg, #F3EFFF 0%, #F8F7F4 40%, #F8F7F4 100%)',
+  household: 'linear-gradient(180deg, #F0F4F8 0%, #FFFFFF 50%)',
+  tasks: 'linear-gradient(180deg, #FAF9F6 0%, #FFFFFF 60%)',
+  rewards: 'linear-gradient(180deg, #FFF8E7 0%, #FFFFFF 50%)',
+  settings: '#FAFAFA',
 };
 
 const HOUSEHOLD_ID = 'household-1';
@@ -49,23 +59,26 @@ export default function App() {
   const Page = PAGES[activeTab];
 
   return (
-    <KidProvider householdId={HOUSEHOLD_ID}>
-      <Shell nav={<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}>
-        <Suspense fallback={null}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex min-h-full flex-col"
-            >
-              <Page />
-            </motion.div>
-          </AnimatePresence>
-        </Suspense>
-      </Shell>
-    </KidProvider>
+    <ToastProvider>
+      <KidProvider householdId={HOUSEHOLD_ID}>
+        <Shell nav={<BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}>
+          <Suspense fallback={null}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex min-h-full flex-col"
+                style={{ background: TAB_BACKGROUNDS[activeTab] }}
+              >
+                <Page />
+              </motion.div>
+            </AnimatePresence>
+          </Suspense>
+        </Shell>
+      </KidProvider>
+    </ToastProvider>
   );
 }

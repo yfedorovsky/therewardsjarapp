@@ -64,10 +64,21 @@ export default function RewardsPage() {
       {/* Reward grid */}
       <div className="flex-1 px-5">
         {rewards.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 pt-20">
-            <span className="text-3xl">{'\u{1F381}'}</span>
+          <motion.div
+            className="flex flex-1 flex-col items-center justify-center gap-2 pt-20"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <motion.span
+              className="text-3xl"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {'\u{1F381}'}
+            </motion.span>
             <p className="text-sm text-text-muted">No rewards yet</p>
-          </div>
+          </motion.div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {rewards.map((reward, i) => (

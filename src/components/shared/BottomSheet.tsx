@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
+import { hapticLight } from '@/lib/haptics';
 
 interface BottomSheetProps {
   open: boolean;
@@ -10,6 +11,15 @@ interface BottomSheetProps {
 export default function BottomSheet({ open, onClose, children }: BottomSheetProps) {
   const y = useMotionValue(0);
   const backdropOpacity = useTransform(y, [0, 300], [1, 0]);
+  const wasOpen = useRef(false);
+
+  // Haptic feedback when sheet opens
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      hapticLight();
+    }
+    wasOpen.current = open;
+  }, [open]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {

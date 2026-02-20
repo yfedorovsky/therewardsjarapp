@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomSheet from '@/components/shared/BottomSheet';
+import { useToast } from '@/components/shared/Toast';
+import { hapticSuccess, hapticMedium } from '@/lib/haptics';
+import { playSuccess, playError } from '@/lib/sounds';
 import type { Reward } from '@/lib/types';
 
 interface RedeemSheetProps {
@@ -16,6 +19,7 @@ const CELEBRATION_EMOJIS = ['\u{1F389}', '\u{2B50}', '\u{1F31F}', '\u{1F38A}', '
 
 export default function RedeemSheet({ open, onClose, reward, kidName, balance, onConfirm }: RedeemSheetProps) {
   const [state, setState] = useState<'idle' | 'celebrating'>('idle');
+  const { showToast } = useToast();
 
   if (!reward) return null;
 
@@ -23,8 +27,16 @@ export default function RedeemSheet({ open, onClose, reward, kidName, balance, o
   const balanceAfter = balance - reward.pointsCost;
 
   const handleRedeem = async () => {
+    if (!canAfford) {
+      hapticMedium();
+      playError();
+      return;
+    }
     await onConfirm();
+    hapticSuccess();
+    playSuccess();
     setState('celebrating');
+    showToast('\u{1F381}', `${kidName} earned ${reward.title}!`);
     setTimeout(() => {
       setState('idle');
       onClose();
@@ -133,7 +145,7 @@ export default function RedeemSheet({ open, onClose, reward, kidName, balance, o
               <button
                 onClick={handleRedeem}
                 disabled={!canAfford}
-                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white transition-opacity disabled:opacity-40"
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white transition-opacity disabled:opacity-40 active:brightness-95"
               >
                 Redeem {'\u{1F389}'}
               </button>

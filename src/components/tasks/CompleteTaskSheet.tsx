@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import BottomSheet from '@/components/shared/BottomSheet';
+import { useToast } from '@/components/shared/Toast';
+import { hapticSuccess } from '@/lib/haptics';
+import { playSuccess } from '@/lib/sounds';
 import type { Task } from '@/lib/types';
 
 interface CompleteTaskSheetProps {
@@ -14,10 +17,14 @@ interface CompleteTaskSheetProps {
 
 export default function CompleteTaskSheet({ open, onClose, task, kidName, onConfirm }: CompleteTaskSheetProps) {
   const [state, setState] = useState<'idle' | 'success'>('idle');
+  const { showToast } = useToast();
 
   const handleConfirm = async () => {
     await onConfirm();
+    hapticSuccess();
+    playSuccess();
     setState('success');
+    showToast('\u{1F389}', `+${task?.points} points for ${kidName}!`);
     setTimeout(() => {
       setState('idle');
       onClose();
@@ -83,7 +90,7 @@ export default function CompleteTaskSheet({ open, onClose, task, kidName, onConf
               </button>
               <button
                 onClick={handleConfirm}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-3 text-sm font-bold text-white"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-3 text-sm font-bold text-white active:brightness-95"
               >
                 Complete
                 <Check size={16} strokeWidth={3} />

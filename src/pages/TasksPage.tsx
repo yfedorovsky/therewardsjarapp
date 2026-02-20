@@ -95,10 +95,21 @@ export default function TasksPage() {
       {/* Task list */}
       <div className="flex flex-1 flex-col gap-2 px-5 pt-1">
         {filteredTasks.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <span className="text-3xl">{'\u{1F4CB}'}</span>
+          <motion.div
+            className="flex flex-1 flex-col items-center justify-center gap-2"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <motion.span
+              className="text-3xl"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {'\u{1F4CB}'}
+            </motion.span>
             <p className="text-sm text-text-muted">No tasks found</p>
-          </div>
+          </motion.div>
         ) : (
           filteredTasks.map((task, i) => (
             <motion.div

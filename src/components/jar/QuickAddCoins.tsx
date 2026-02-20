@@ -1,10 +1,18 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
+import { hapticMedium } from '@/lib/haptics';
+import { playCoinTap } from '@/lib/sounds';
 
 const COIN_VALUES = [5, 10, 20];
 
+export interface CoinOrigin {
+  x: number;
+  y: number;
+  value: number;
+}
+
 interface QuickAddCoinsProps {
-  onAdd: (points: number) => void;
+  onAdd: (points: number, origin?: CoinOrigin) => void;
   onCustom: () => void;
   onDragStateChange?: (dragging: boolean) => void;
 }
@@ -18,6 +26,7 @@ interface FloatingText {
 export default function QuickAddCoins({ onAdd, onCustom, onDragStateChange }: QuickAddCoinsProps) {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const spawnFloat = useCallback((value: number, index: number) => {
     const id = Date.now() + Math.random();
@@ -28,8 +37,17 @@ export default function QuickAddCoins({ onAdd, onCustom, onDragStateChange }: Qu
     }, 600);
   }, []);
 
+  const getOrigin = (index: number, value: number): CoinOrigin | undefined => {
+    const btn = buttonRefs.current[index];
+    if (!btn) return undefined;
+    const rect = btn.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, value };
+  };
+
   const handleTap = (value: number, index: number) => {
-    onAdd(value);
+    hapticMedium();
+    playCoinTap();
+    onAdd(value, getOrigin(index, value));
     spawnFloat(value, index);
   };
 
@@ -37,7 +55,9 @@ export default function QuickAddCoins({ onAdd, onCustom, onDragStateChange }: Qu
     onDragStateChange?.(false);
     // If dragged upward past threshold, treat as drop into jar
     if (info.offset.y < -80) {
-      onAdd(value);
+      hapticMedium();
+      playCoinTap();
+      onAdd(value, getOrigin(index, value));
       spawnFloat(value, index);
     }
   };
@@ -62,19 +82,30 @@ export default function QuickAddCoins({ onAdd, onCustom, onDragStateChange }: Qu
         </AnimatePresence>
       </div>
 
-      {/* Coin chips — tappable & draggable */}
+      {/* Coin chips — tappable & draggable with idle float */}
       <div className="flex items-center gap-5">
         {COIN_VALUES.map((value, index) => (
           <motion.button
             key={value}
-            whileTap={{ scale: 1.15 }}
+            ref={(el) => { buttonRefs.current[index] = el; }}
+            whileTap={{ scale: 0.9 }}
+            animate={{
+              y: [0, -2, 0],
+            }}
             drag
             dragSnapToOrigin
             dragElastic={0.6}
             onDragStart={() => onDragStateChange?.(true)}
             onDragEnd={(e, info) => handleDragEnd(value, index, e, info)}
             onClick={() => handleTap(value, index)}
-            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+            transition={{
+              y: {
+                duration: 2.5 + index * 0.4,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              },
+              scale: { type: 'spring', stiffness: 500, damping: 15 },
+            }}
             className="flex items-center justify-center rounded-full font-extrabold text-amber-900 select-none touch-none"
             style={{
               width: 56,

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ChevronRight, Pencil, Trash2, Download, Upload, RotateCcw } from 'lucide-react';
+import { ChevronRight, Pencil, Trash2, Download, Upload, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import EditKidSheet from '@/components/settings/EditKidSheet';
 import ManageTasksSheet from '@/components/settings/ManageTasksSheet';
 import ManageRewardsSheet from '@/components/settings/ManageRewardsSheet';
@@ -15,6 +15,7 @@ import {
 } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { KID_COLORS } from '@/lib/constants';
+import { isSoundEnabled, setSoundEnabled } from '@/lib/sounds';
 import type { Kid } from '@/lib/types';
 
 const HOUSEHOLD_ID = 'household-1';
@@ -26,7 +27,14 @@ export default function SettingsPage() {
   const [showTasks, setShowTasks] = useState(false);
   const [showRewards, setShowRewards] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+  };
 
   const handleSaveKid = async (id: string, changes: Partial<Kid>) => {
     await updateKid(id, changes);
@@ -153,6 +161,33 @@ export default function SettingsPage() {
           >
             <span className="text-sm font-semibold text-text">Rewards</span>
             <ChevronRight size={18} className="text-text-light" />
+          </button>
+        </div>
+      </section>
+
+      {/* PREFERENCES section */}
+      <section className="px-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-text-muted">Preferences</h2>
+        <div className="overflow-hidden rounded-2xl bg-surface" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <button
+            onClick={toggleSound}
+            className="flex w-full items-center gap-3 px-5 py-3 text-left"
+          >
+            {soundOn ? (
+              <Volume2 size={18} className="text-primary" />
+            ) : (
+              <VolumeX size={18} className="text-text-muted" />
+            )}
+            <span className="flex-1 text-sm font-semibold text-text">Sound Effects</span>
+            <div
+              className="flex h-7 w-12 items-center rounded-full px-0.5 transition-colors duration-200"
+              style={{ backgroundColor: soundOn ? '#7C5CFC' : '#E8E6E1' }}
+            >
+              <div
+                className="h-6 w-6 rounded-full bg-white transition-transform duration-200"
+                style={{ transform: soundOn ? 'translateX(20px)' : 'translateX(0)' }}
+              />
+            </div>
           </button>
         </div>
       </section>

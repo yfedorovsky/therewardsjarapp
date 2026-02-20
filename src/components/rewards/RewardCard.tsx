@@ -1,4 +1,6 @@
+import { motion } from 'framer-motion';
 import type { Reward } from '@/lib/types';
+import { hapticMedium } from '@/lib/haptics';
 
 interface RewardCardProps {
   reward: Reward;
@@ -8,12 +10,17 @@ interface RewardCardProps {
 
 export default function RewardCard({ reward, canAfford, onTap }: RewardCardProps) {
   return (
-    <button
-      onClick={onTap}
-      className={`flex flex-col items-center gap-2 rounded-2xl bg-surface px-3 py-4 transition-all duration-100 active:scale-[0.97] ${
+    <motion.button
+      onClick={() => {
+        hapticMedium();
+        onTap();
+      }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+      className={`flex flex-col items-center gap-2 rounded-2xl bg-surface px-3 py-4 ${
         canAfford ? 'opacity-100' : 'opacity-50'
       }`}
-      style={{ boxShadow: 'var(--shadow-card)' }}
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
     >
       {/* Icon */}
       <div
@@ -36,6 +43,6 @@ export default function RewardCard({ reward, canAfford, onTap }: RewardCardProps
       >
         {reward.pointsCost} {'\u2B50'}
       </span>
-    </button>
+    </motion.button>
   );
 }
