@@ -23,7 +23,7 @@ const PAGES: Record<TabId, React.LazyExoticComponent<React.FC>> = {
 
 /** Background gradient per tab */
 const TAB_BACKGROUNDS: Record<TabId, string> = {
-  jar: 'linear-gradient(180deg, #F3EFFF 0%, #F8F7F4 40%, #F8F7F4 100%)',
+  jar: 'radial-gradient(ellipse at 50% 30%, #B066FF 0%, #7B2FBE 50%, #5B1F9E 100%)',
   household: 'linear-gradient(180deg, #F0F4F8 0%, #FFFFFF 50%)',
   tasks: 'linear-gradient(180deg, #FAF9F6 0%, #FFFFFF 60%)',
   rewards: 'linear-gradient(180deg, #FFF8E7 0%, #FFFFFF 50%)',

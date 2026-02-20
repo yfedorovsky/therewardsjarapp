@@ -105,3 +105,23 @@ button {
 .jar-glow {
   animation: jar-glow-pulse 1s ease-in-out infinite;
 }
+
+/* Background sparkle twinkle */
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: var(--sparkle-min, 0.2); transform: scale(0.8); }
+  50% { opacity: var(--sparkle-max, 0.8); transform: scale(1.1); }
+}
+.sparkle-particle {
+  animation: sparkle-twinkle var(--sparkle-dur, 3s) ease-in-out infinite;
+  animation-delay: var(--sparkle-delay, 0s);
+}
+
+/* Denomination button idle bob */
+@keyframes coin-stack-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.coin-stack-bob {
+  animation: coin-stack-bob var(--bob-dur, 3s) ease-in-out infinite;
+  animation-delay: var(--bob-delay, 0s);
+}

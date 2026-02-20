@@ -4,6 +4,7 @@ import CoinJar from '@/components/jar/CoinJar';
 import QuickAddCoins, { type CoinOrigin } from '@/components/jar/QuickAddCoins';
 import FlyingCoin, { type FlyingCoinData } from '@/components/jar/FlyingCoin';
 import CustomAmountModal from '@/components/jar/CustomAmountModal';
+import BackgroundSparkles from '@/components/jar/BackgroundSparkles';
 import { useKids } from '@/hooks/useKids';
 import { addManualPoints } from '@/lib/db';
 import { playCoinArc } from '@/lib/sounds';
@@ -18,12 +19,10 @@ export default function JarPage() {
   const handleAddPoints = useCallback(async (points: number, origin?: CoinOrigin) => {
     if (!selectedKid) return;
 
-    // If we have coin origin info and jar ref, spawn a flying coin
     if (origin && jarRef.current) {
       const jarRect = jarRef.current.getBoundingClientRect();
-      // Target: center-top of jar (the mouth area)
       const endX = jarRect.left + jarRect.width / 2;
-      const endY = jarRect.top + jarRect.height * 0.25;
+      const endY = jarRect.top + jarRect.height * 0.2;
 
       const coin: FlyingCoinData = {
         id: Date.now() + Math.random(),
@@ -48,10 +47,13 @@ export default function JarPage() {
   if (!selectedKid) return null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
+      {/* Ambient background sparkles */}
+      <BackgroundSparkles />
+
       <TopBar />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-4">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-4">
         <div ref={jarRef}>
           <CoinJar points={balance} kidName={selectedKid.name} glowing={jarGlowing} />
         </div>
