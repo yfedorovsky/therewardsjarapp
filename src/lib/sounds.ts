@@ -105,13 +105,13 @@ async function playTone(
 
 /** Short bright "tick" — when tapping a coin denomination button */
 export function playCoinTap(): void {
-  playTone(800, 50, 'sine', 0.12);
+  playTone(880, 120, 'sine', 0.35);
 }
 
 /** Satisfying "clink" — when coin lands in jar */
 export function playCoinDrop(): void {
-  playTone(1200, 80, 'sine', 0.1);
-  playTone(800, 100, 'triangle', 0.08, 0.015);
+  playTone(1200, 150, 'sine', 0.3);
+  playTone(800, 180, 'triangle', 0.25, 0.015);
 }
 
 /** Subtle "whoosh" during coin flight — filtered noise */
@@ -136,28 +136,28 @@ export async function playCoinArc(): Promise<void> {
   filter.Q.value = 2;
 
   const gain = ac.createGain();
-  gain.gain.setValueAtTime(0.06, ac.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.18, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25);
 
   source.connect(filter);
   filter.connect(gain);
   gain.connect(ac.destination);
   source.start();
-  source.stop(ac.currentTime + 0.25);
+  source.stop(ac.currentTime + 0.3);
 }
 
 /** Cheerful ascending chime — task completion / reward redemption */
 export function playSuccess(): void {
   if (!isSoundEnabled()) return;
   // C5, E5, G5 — major chord ascending
-  playTone(523, 80, 'sine', 0.1, 0);
-  playTone(659, 80, 'sine', 0.1, 0.1);
-  playTone(784, 120, 'sine', 0.12, 0.2);
+  playTone(523, 160, 'sine', 0.3, 0);
+  playTone(659, 160, 'sine', 0.3, 0.12);
+  playTone(784, 220, 'sine', 0.35, 0.24);
 }
 
 /** Soft "pop" — switching kids */
 export function playKidSwitch(): void {
-  playTone(600, 30, 'sine', 0.1);
+  playTone(600, 80, 'sine', 0.25);
 }
 
 /** Gentle low tone — insufficient points / validation error */
@@ -179,11 +179,11 @@ export async function playError(): Promise<void> {
   lfoGain.connect(osc.frequency);
   lfo.start();
 
-  gain.gain.setValueAtTime(0.12, ac.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.3, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25);
   osc.connect(gain);
   gain.connect(ac.destination);
   osc.start();
-  osc.stop(ac.currentTime + 0.2);
-  lfo.stop(ac.currentTime + 0.2);
+  osc.stop(ac.currentTime + 0.3);
+  lfo.stop(ac.currentTime + 0.3);
 }
