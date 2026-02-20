@@ -2,27 +2,75 @@
  * Sound effects utility using the Web Audio API.
  * All sounds are generated programmatically — no external audio files.
  * Gracefully degrades to no-op on unsupported devices.
+ *
+ * iOS Safari keeps AudioContext in "suspended" state until resume() is
+ * awaited inside a user-gesture callback. We unlock the context on the
+ * very first touchstart/click AND await resume inside every play call
+ * so sounds work reliably on all mobile browsers.
  */
 
 const SOUND_KEY = 'soundEnabled';
 
 let ctx: AudioContext | null = null;
+let unlocked = false;
 
-/** Lazily get or create the AudioContext */
-function getCtx(): AudioContext | null {
+/** Create the AudioContext (lazy, one-time) */
+function createCtx(): AudioContext | null {
   try {
     if (!ctx || ctx.state === 'closed') {
       ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    }
-    // Resume if suspended (browser autoplay policy)
-    if (ctx.state === 'suspended') {
-      ctx.resume();
     }
     return ctx;
   } catch {
     return null;
   }
 }
+
+/** Ensure the AudioContext is running (must be called from user gesture) */
+async function ensureRunning(): Promise<AudioContext | null> {
+  const ac = createCtx();
+  if (!ac) return null;
+  if (ac.state === 'suspended') {
+    await ac.resume();
+  }
+  return ac;
+}
+
+/**
+ * One-time unlock for iOS Safari.
+ * Plays a silent buffer on the first touch to move the context to "running".
+ */
+function unlockAudio(): void {
+  if (unlocked) return;
+  const ac = createCtx();
+  if (!ac) return;
+
+  const unlock = async () => {
+    if (unlocked) return;
+    unlocked = true;
+
+    if (ac.state === 'suspended') {
+      await ac.resume();
+    }
+    // Play a silent buffer to fully unlock on iOS
+    const buf = ac.createBuffer(1, 1, ac.sampleRate);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(ac.destination);
+    src.start(0);
+
+    document.removeEventListener('touchstart', unlock, true);
+    document.removeEventListener('touchend', unlock, true);
+    document.removeEventListener('click', unlock, true);
+  };
+
+  document.addEventListener('touchstart', unlock, true);
+  document.addEventListener('touchend', unlock, true);
+  document.addEventListener('click', unlock, true);
+}
+
+// Kick off the unlock listener as soon as this module loads
+unlockAudio();
 
 export function isSoundEnabled(): boolean {
   return localStorage.getItem(SOUND_KEY) !== 'false';
@@ -33,14 +81,14 @@ export function setSoundEnabled(enabled: boolean): void {
 }
 
 /** Play a tone using an oscillator node */
-function playTone(
+async function playTone(
   freq: number,
   duration: number,
   type: OscillatorType = 'sine',
   volume: number = 0.15,
   delay: number = 0,
-): void {
-  const ac = getCtx();
+): Promise<void> {
+  const ac = await ensureRunning();
   if (!ac || !isSoundEnabled()) return;
 
   const osc = ac.createOscillator();
@@ -62,17 +110,13 @@ export function playCoinTap(): void {
 
 /** Satisfying "clink" — when coin lands in jar */
 export function playCoinDrop(): void {
-  const ac = getCtx();
-  if (!ac || !isSoundEnabled()) return;
-
-  // Two overlapping tones for a richer clink
   playTone(1200, 80, 'sine', 0.1);
   playTone(800, 100, 'triangle', 0.08, 0.015);
 }
 
 /** Subtle "whoosh" during coin flight — filtered noise */
-export function playCoinArc(): void {
-  const ac = getCtx();
+export async function playCoinArc(): Promise<void> {
+  const ac = await ensureRunning();
   if (!ac || !isSoundEnabled()) return;
 
   const bufferSize = ac.sampleRate * 0.2;
@@ -117,9 +161,9 @@ export function playKidSwitch(): void {
 }
 
 /** Gentle low tone — insufficient points / validation error */
-export function playError(): void {
+export async function playError(): Promise<void> {
   if (!isSoundEnabled()) return;
-  const ac = getCtx();
+  const ac = await ensureRunning();
   if (!ac) return;
 
   const osc = ac.createOscillator();
